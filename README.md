@@ -14,3 +14,4 @@
     app:rightTopRadius="10dp"/>
 
 ##下载：
+[![](https://jitpack.io/v/yanxinit/ArcButton.svg)](https://jitpack.io/#yanxinit/ArcButton/release-1.0.0)
