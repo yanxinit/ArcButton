@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="ArcButton">
+        <attr name="leftTopRadius" format="dimension"/>
+        <attr name="leftBottomRadius" format="dimension"/>
+        <attr name="rightTopRadius" format="dimension"/>
+        <attr name="rightBottomRadius" format="dimension"/>
+        <attr name="backgroundColor" format="color"/>
+    </declare-styleable>
+</resources>
