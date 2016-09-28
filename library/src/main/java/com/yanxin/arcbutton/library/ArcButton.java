@@ -2,32 +2,27 @@ package com.yanxin.arcbutton.library;
 
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Path;
-import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
+import android.graphics.drawable.StateListDrawable;
+import android.os.Build;
 import android.util.AttributeSet;
-import android.view.MotionEvent;
-import android.view.View;
 import android.widget.Button;
 
-/**
- * Created by YanXin on 2016/6/29.
- */
 public class ArcButton extends Button {
 
-    private static final String MASK_COLOR = "#33000000";
+    private static final int ACTIVE_COLOR_ALPHA = 128;
+    private static final String DISABLED_COLOR = "#EEEEEE";
 
     private float mLeftTopRadius;
     private float mRightTopRadius;
     private float mLeftBottomRadius;
     private float mRightBottomRadius;
     private int mBackgroundColor;
-
-    private Paint mButtonPaint = new Paint();
-
-    private boolean mIsTouch;
+    private float mStrokeWidth;
+    private int mStrokeColor;
 
     public ArcButton(Context context) {
         this(context, null);
@@ -37,6 +32,7 @@ public class ArcButton extends Button {
         this(context, attrs, android.R.attr.buttonStyle);
     }
 
+    @SuppressWarnings("deprecation")
     public ArcButton(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
 
@@ -46,82 +42,78 @@ public class ArcButton extends Button {
         mRightTopRadius = array.getDimension(R.styleable.ArcButton_rightTopRadius, 0);
         mRightBottomRadius = array.getDimension(R.styleable.ArcButton_rightBottomRadius, 0);
         mBackgroundColor = array.getColor(R.styleable.ArcButton_backgroundColor, Color.GREEN);
+        mStrokeColor = array.getColor(R.styleable.ArcButton_strokeColor, Color.GREEN);
+        mStrokeWidth = array.getDimension(R.styleable.ArcButton_strokeWidth, 0);
         array.recycle();
 
-        setupOnTouchListener();
-    }
-
-    private void setupOnTouchListener() {
-        setOnTouchListener(new OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        mIsTouch = true;
-                        invalidate();
-                        break;
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        mIsTouch = false;
-                        invalidate();
-                        break;
-                }
-                return false;
-            }
-        });
-    }
-
-    @Override
-    protected void onDraw(Canvas canvas) {
-        mButtonPaint.setAntiAlias(true);
-        mButtonPaint.setColor(mBackgroundColor);
-        Path path = getCornerRectPath(mLeftTopRadius, mRightTopRadius, mLeftBottomRadius, mRightBottomRadius);
-        canvas.drawPath(path, mButtonPaint);
-        if (mIsTouch) {
-            mButtonPaint.setColor(Color.parseColor(MASK_COLOR));
-            canvas.drawPath(path, mButtonPaint);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+                setStateListAnimator(null);
+            setBackground(generateBackground());
+        } else {
+            setBackgroundDrawable(generateBackground());
         }
-        super.onDraw(canvas);
     }
 
-    private Path getCornerRectPath(float leftTopRadius, float rightTopRadius,
-                                   float leftBottomRadius, float rightBottomRadius) {
-        float width = getRight() - getLeft();
-        float height = getBottom() - getTop();
+    private Drawable generateBackground() {
+        GradientDrawable defaultGd = new GradientDrawable();
+        GradientDrawable activeGd = new GradientDrawable();
+        GradientDrawable disabledGd = new GradientDrawable();
 
-        float maxRadius = Math.min(width, height) / 2;
-        leftTopRadius = formatRadius(0F, maxRadius, leftTopRadius);
-        rightTopRadius = formatRadius(0F, maxRadius, rightTopRadius);
-        leftBottomRadius = formatRadius(0F, maxRadius, leftBottomRadius);
-        rightBottomRadius = formatRadius(0F, maxRadius, rightBottomRadius);
+        defaultGd.setColor(mBackgroundColor);
+        activeGd.setColor(getActiveColor(mBackgroundColor));
+        disabledGd.setColor(Color.parseColor(DISABLED_COLOR));
 
-        Path path = new Path();
-        path.moveTo(leftTopRadius, 0);
-        path.lineTo(getWidth() - rightTopRadius, 0);
+        defaultGd.setStroke((int) mStrokeWidth, mStrokeColor);
+        activeGd.setStroke((int) mStrokeWidth, mStrokeColor);
+        disabledGd.setStroke((int) mStrokeWidth, mStrokeColor);
 
-//        path.rQuadTo(rightTopRadius, 0, rightTopRadius, rightTopRadius);
-        path.arcTo(new RectF(getWidth() - rightTopRadius * 2, 0, getWidth(), rightTopRadius * 2), -90, 90);
-        path.lineTo(getWidth(), getHeight() - rightBottomRadius);
-//        path.rQuadTo(0, rightBottomRadius, -rightBottomRadius, rightBottomRadius);
-        path.arcTo(new RectF(getWidth() - rightBottomRadius * 2, getHeight() - rightBottomRadius * 2, getWidth(), getHeight()), 0, 90);
-        path.lineTo(leftBottomRadius, getHeight());
-//        path.rQuadTo(-leftBottomRadius, 0, -leftBottomRadius, -leftBottomRadius);
-        path.arcTo(new RectF(0, getHeight() - leftBottomRadius * 2, leftBottomRadius * 2, getHeight()), 90, 90);
-        path.lineTo(0, leftTopRadius);
-//        path.rQuadTo(0, -leftTopRadius, leftTopRadius, -leftTopRadius);
-        path.arcTo(new RectF(0, 0, leftTopRadius * 2, leftTopRadius * 2), 180, 90);
-
-        path.close();
-
-        return path;
+        setupDrawableCorners(defaultGd, activeGd, disabledGd);
+        return setupStateDrawable(defaultGd, activeGd, disabledGd);
     }
 
-    private float formatRadius(float minRadius, float maxRadius, float radius) {
-        if (radius < minRadius)
-            radius = minRadius;
-        if (radius > maxRadius)
-            radius = maxRadius;
-        return radius;
+    private int getActiveColor(int color) {
+        return increaseOpacityFromInt(color, ACTIVE_COLOR_ALPHA);
+    }
+
+    private int increaseOpacityFromInt(int color, int
+            alpha) {
+        return Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
+    }
+
+    private void setupDrawableCorners(GradientDrawable defaultGd, GradientDrawable activeGd,
+                                      GradientDrawable disabledGd) {
+        float[] radii = new float[]{
+                mLeftTopRadius, mLeftTopRadius,
+                mRightTopRadius, mRightTopRadius,
+                mRightBottomRadius, mRightBottomRadius,
+                mLeftBottomRadius, mLeftBottomRadius
+        };
+
+        defaultGd.setCornerRadii(radii);
+        activeGd.setCornerRadii(radii);
+        disabledGd.setCornerRadii(radii);
+    }
+
+    private StateListDrawable setupStateDrawable(GradientDrawable defaultGd, GradientDrawable activeGd,
+                                                 GradientDrawable disabledGd) {
+        StateListDrawable stateListDrawable = new StateListDrawable();
+        LayerDrawable defaultLayer = new LayerDrawable(new Drawable[]{defaultGd});
+        LayerDrawable activeLayer = new LayerDrawable(new Drawable[]{activeGd});
+        LayerDrawable disabledLayer = new LayerDrawable(new Drawable[]{disabledGd});
+
+        if (Build.VERSION.SDK_INT >= 14) {
+            stateListDrawable.addState(new int[]{android.R.attr.state_hovered}, activeLayer);
+        }
+
+        stateListDrawable.addState(new int[]{android.R.attr.state_activated}, activeLayer);
+        stateListDrawable.addState(new int[]{android.R.attr.state_focused}, activeLayer);
+        stateListDrawable.addState(new int[]{android.R.attr.state_pressed}, activeLayer);
+        stateListDrawable.addState(new int[]{android.R.attr.state_selected}, activeLayer);
+        stateListDrawable.addState(new int[]{-android.R.attr.state_enabled}, disabledLayer);
+        stateListDrawable.addState(new int[]{}, defaultLayer);
+
+        return stateListDrawable;
     }
 
 }

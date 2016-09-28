@@ -6,5 +6,7 @@
         <attr name="rightTopRadius" format="dimension"/>
         <attr name="rightBottomRadius" format="dimension"/>
         <attr name="backgroundColor" format="color"/>
+        <attr name="strokeWidth" format="dimension"/>
+        <attr name="strokeColor" format="color"/>
     </declare-styleable>
 </resources>
